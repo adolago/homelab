@@ -1,0 +1,50 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers: []
+
+rule_files: []
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter - svr-core system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'svr-core'
+
+  # cAdvisor - Docker container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          instance: 'svr-core'
+
+  # Proxmox VE host (svr-host) - via pve-exporter
+  # Update 192.168.178.88 with your Proxmox host IP
+  - job_name: 'proxmox'
+    static_configs:
+      - targets: ['192.168.178.88']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+    metrics_path: /pve
+
+  # TrueNAS (svr-nas) - node exporter
+  # Update 192.168.178.101 with your NAS IP
+  - job_name: 'truenas'
+    static_configs:
+      - targets: ['192.168.178.101:9100']
+        labels:
+          instance: 'svr-nas'

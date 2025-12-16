@@ -1,0 +1,46 @@
+# svr-dmz Caddy Configuration
+# Cloudflare Tunnel handles external traffic
+
+{
+    # Enable metrics for Prometheus
+    servers {
+        metrics
+    }
+    admin localhost:2019
+}
+
+# Default site - your public website
+:80 {
+    root * /var/www/html
+    file_server
+    log {
+        output file /var/log/caddy/access.log
+    }
+}
+
+# Internal monitoring (localhost only)
+:8080 {
+    @portainer path /portainer/*
+    handle @portainer {
+        uri strip_prefix /portainer
+        reverse_proxy localhost:9000
+    }
+
+    @grafana path /grafana/*
+    handle @grafana {
+        uri strip_prefix /grafana
+        reverse_proxy localhost:3000
+    }
+
+    @prometheus path /prometheus/*
+    handle @prometheus {
+        uri strip_prefix /prometheus
+        reverse_proxy localhost:9090
+    }
+
+    @analytics path /analytics/*
+    handle @analytics {
+        uri strip_prefix /analytics
+        reverse_proxy localhost:8000
+    }
+}

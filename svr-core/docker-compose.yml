@@ -1,0 +1,21 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm
+    runtime: nvidia
+    environment:
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - VLLM_ATTENTION_BACKEND=FLASH_ATTN
+    volumes:
+      - ./vllm-models:/root/.cache/huggingface
+    ports:
+      - "8000:8000"
+    command: ["--model", "Qwen/Qwen3-4B-Thinking-2507-FP8", "--max-model-len", "8192", "--gpu-memory-utilization", "0.9"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

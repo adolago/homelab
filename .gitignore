@@ -1,0 +1,22 @@
+# Environment files with secrets
+.env
+*.env
+
+# Docker volumes and data
+**/data/
+**/config/
+*_data/
+
+# Caddy certificates and state
+caddy/data/
+caddy/config/
+
+# Model cache
+vllm-models/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
