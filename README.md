@@ -119,7 +119,3 @@ homelab/
 
 - [dotfiles](https://github.com/adolago/dotfiles) - Hyprland workstation configs
 - [adolago.xyz](https://github.com/adolago/adolago.xyz) - Personal website
-
-## License
-
-MIT
