@@ -1,0 +1,75 @@
+---
+# Common role - baseline configuration for all hosts
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+  tags: [timezone, time]
+
+- name: Configure NTP (systemd-timesyncd)
+  template:
+    src: timesyncd.conf.j2
+    dest: /etc/systemd/timesyncd.conf
+    mode: '0644'
+  notify: restart timesyncd
+  tags: [ntp, time]
+
+- name: Enable and start systemd-timesyncd
+  systemd:
+    name: systemd-timesyncd
+    enabled: yes
+    state: started
+  tags: [ntp, time]
+
+- name: Set hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+  tags: [hostname]
+
+- name: Update /etc/hosts
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+    mode: '0644'
+  tags: [hostname, dns]
+
+- name: Install common packages (Debian/Ubuntu)
+  apt:
+    name: "{{ common_packages_debian }}"
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags: [packages]
+
+- name: Install common packages (Arch)
+  pacman:
+    name: "{{ common_packages_arch }}"
+    state: present
+  when: ansible_os_family == "Archlinux"
+  tags: [packages]
+
+- name: Configure SSH hardening
+  template:
+    src: sshd_config_hardening.j2
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    mode: '0644'
+  notify: restart sshd
+  tags: [ssh, security]
+
+- name: Ensure .ssh directory exists for artur
+  file:
+    path: /home/artur/.ssh
+    state: directory
+    owner: artur
+    group: artur
+    mode: '0700'
+  tags: [ssh]
+
+- name: Deploy authorized SSH keys
+  authorized_key:
+    user: artur
+    state: present
+    key: "{{ item }}"
+  loop: "{{ ssh_authorized_keys }}"
+  tags: [ssh]

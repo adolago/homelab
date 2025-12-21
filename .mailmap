@@ -1,0 +1,13 @@
+# Git mailmap for author normalization
+# Format: Proper Name <proper@email> Old Name <old@email>
+# This helps normalize commit history for privacy
+#
+# Usage for history rewrite:
+#   git filter-repo --mailmap .mailmap
+#
+# Or just for display (doesn't modify history):
+#   git log --use-mailmap
+
+# Map personal emails to a generic contributor identity
+Contributor <contributor@users.noreply.github.com> <dolagoartur@gmail.com>
+Contributor <contributor@users.noreply.github.com> <e12534826@student.tuwien.ac.at>

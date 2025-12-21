@@ -1,0 +1,24 @@
+---
+- name: restart prometheus
+  community.docker.docker_container:
+    name: prometheus
+    state: started
+    restart: yes
+
+- name: restart alertmanager
+  community.docker.docker_container:
+    name: alertmanager
+    state: started
+    restart: yes
+
+- name: restart loki
+  community.docker.docker_container:
+    name: loki
+    state: started
+    restart: yes
+
+- name: restart promtail
+  community.docker.docker_container:
+    name: promtail
+    state: started
+    restart: yes

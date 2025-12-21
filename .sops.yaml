@@ -1,0 +1,27 @@
+# SOPS configuration for homelab secrets
+# Uses age encryption - generate key with: age-keygen -o ~/.config/sops/age/keys.txt
+#
+# Setup:
+#   1. Install sops and age: paru -S sops age
+#   2. Generate age key: age-keygen -o ~/.config/sops/age/keys.txt
+#   3. Copy public key below
+#   4. Encrypt secrets: sops --encrypt secrets.yml > secrets.enc.yml
+#   5. Edit encrypted: sops secrets.enc.yml
+#   6. Use in Ansible: ansible-playbook --extra-vars @secrets.enc.yml playbook.yml
+
+creation_rules:
+  # Encrypt all files matching these patterns
+  # CUSTOMIZE: Replace with your age public key from: age-keygen
+  - path_regex: .*secrets.*\.ya?ml$
+    age: >-
+      age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    # Replace with your actual age public key
+
+  - path_regex: .*vault.*\.ya?ml$
+    age: >-
+      age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+  # Ansible vault files
+  - path_regex: ansible/.*vault.*\.ya?ml$
+    age: >-
+      age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

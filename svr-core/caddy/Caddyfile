@@ -1,10 +1,18 @@
 # Homelab Caddy Configuration
 # .home.arpa domain for internal services with HTTPS
+#
+# CUSTOMIZE: Replace example IPs in INFRASTRUCTURE PROXIES section
 
 {
     # Use internal CA for .home.arpa (self-signed)
     local_certs
+    # Skip OCSP stapling for internal certs
+    ocsp_stapling off
 }
+
+# ===========================================
+# MONITORING SERVICES
+# ===========================================
 
 # Portainer
 portainer.home.arpa {
@@ -21,34 +29,58 @@ prometheus.home.arpa {
     reverse_proxy prometheus:9090
 }
 
+# Alertmanager
+alertmanager.home.arpa {
+    reverse_proxy alertmanager:9093
+}
+
+# Loki
+loki.home.arpa {
+    reverse_proxy loki:3100
+}
+
+# cAdvisor
+cadvisor.home.arpa {
+    reverse_proxy cadvisor:8080
+}
+
+# ===========================================
+# APPLICATION SERVICES
+# ===========================================
+
 # Immich
 immich.home.arpa, photos.home.arpa {
-    reverse_proxy {$SVR_CORE_IP}:2283
+    reverse_proxy host.docker.internal:2283
 }
 
 # Jellyfin
 jellyfin.home.arpa, media.home.arpa {
-    reverse_proxy {$SVR_CORE_IP}:8096
+    reverse_proxy host.docker.internal:8096
 }
 
 # Open WebUI (LLM)
 chat.home.arpa, llm.home.arpa {
-    reverse_proxy {$SVR_CORE_IP}:3000
+    reverse_proxy host.docker.internal:3000
 }
 
 # vLLM API
 vllm.home.arpa {
-    reverse_proxy {$SVR_CORE_IP}:8000
+    reverse_proxy host.docker.internal:8000
 }
+
+# ===========================================
+# INFRASTRUCTURE PROXIES
+# CUSTOMIZE: Update IPs to match your network
+# ===========================================
 
 # Home Assistant
 ha.home.arpa, homeassistant.home.arpa {
-    reverse_proxy {$HA_IP}:8123
+    reverse_proxy 192.168.1.20:8123  # Your Home Assistant IP
 }
 
 # Proxmox
 proxmox.home.arpa, pve.home.arpa {
-    reverse_proxy https://{$PVE_IP}:8006 {
+    reverse_proxy https://192.168.1.2:8006 {  # Your Proxmox IP
         transport http {
             tls_insecure_skip_verify
         }
@@ -57,16 +89,11 @@ proxmox.home.arpa, pve.home.arpa {
 
 # TrueNAS
 nas.home.arpa, truenas.home.arpa {
-    reverse_proxy https://{$NAS_IP} {
+    reverse_proxy https://192.168.1.11 {  # Your NAS IP
         transport http {
             tls_insecure_skip_verify
         }
     }
-}
-
-# cAdvisor
-cadvisor.home.arpa {
-    reverse_proxy cadvisor:8080
 }
 
 # DNS Admin

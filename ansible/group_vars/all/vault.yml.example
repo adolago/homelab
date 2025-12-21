@@ -1,0 +1,28 @@
+# Example vault file - copy to vault.yml and encrypt with SOPS
+# sops --encrypt vault.yml.example > vault.yml
+#
+# Or edit directly: sops vault.yml
+
+# Grafana credentials
+vault_grafana_password: "your-secure-password-here"
+
+# DNS admin credentials
+vault_dnsmasq_password: "your-secure-password-here"
+
+# Proxmox API token (for pve-exporter)
+vault_pve_token_name: "prometheus"
+vault_pve_token_value: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Alertmanager notifications (optional)
+vault_alertmanager_slack_webhook: ""
+vault_alertmanager_email_to: ""
+vault_smtp_host: ""
+
+# Backup encryption passphrase
+vault_borg_passphrase: "your-borg-passphrase-here"
+
+# SSH private key for automation (optional)
+vault_automation_ssh_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  ...
+  -----END OPENSSH PRIVATE KEY-----

@@ -1,0 +1,161 @@
+# Prometheus Alert Rules - Managed by Ansible
+{% raw %}
+groups:
+  - name: infrastructure
+    interval: 30s
+    rules:
+      # ===========================================
+      # HOST ALERTS
+      # ===========================================
+      - alert: HostDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Host {{ $labels.instance }} is down"
+          description: "{{ $labels.instance }} has been unreachable for more than 2 minutes."
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 85% (current: {{ $value | printf \"%.1f\" }}%)"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 90% (current: {{ $value | printf \"%.1f\" }}%)"
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space low on {{ $labels.instance }}"
+          description: "Disk {{ $labels.mountpoint }} is {{ $value | printf \"%.1f\" }}% full"
+
+      - alert: DiskSpaceCritical
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space critical on {{ $labels.instance }}"
+          description: "Disk {{ $labels.mountpoint }} is {{ $value | printf \"%.1f\" }}% full - immediate action required"
+
+      # ===========================================
+      # CONTAINER ALERTS
+      # ===========================================
+      - alert: ContainerDown
+        expr: absent(container_last_seen{name=~".+"}) OR (time() - container_last_seen{name=~".+"}) > 60
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} is down"
+          description: "Container {{ $labels.name }} has been down for more than 2 minutes"
+
+      - alert: ContainerHighCPU
+        expr: sum by(name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU in container {{ $labels.name }}"
+          description: "Container {{ $labels.name }} CPU usage is {{ $value | printf \"%.1f\" }}%"
+
+      - alert: ContainerHighMemory
+        expr: (container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory in container {{ $labels.name }}"
+          description: "Container {{ $labels.name }} memory usage is {{ $value | printf \"%.1f\" }}%"
+
+      # ===========================================
+      # BACKUP ALERTS
+      # ===========================================
+      - alert: BackupJobFailed
+        expr: changes(node_textfile_scrape_error[24h]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup job may have failed"
+          description: "Check backup logs on {{ $labels.instance }}"
+
+      # ===========================================
+      # NETWORK ALERTS
+      # ===========================================
+      - alert: HighNetworkTraffic
+        expr: rate(node_network_receive_bytes_total{device!~"lo|veth.*|docker.*|br-.*"}[5m]) * 8 > 800000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High network traffic on {{ $labels.instance }}"
+          description: "Network interface {{ $labels.device }} receiving {{ $value | humanize }}bps"
+
+      # ===========================================
+      # PROXMOX ALERTS
+      # ===========================================
+      - alert: ProxmoxVMDown
+        expr: pve_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Proxmox VM {{ $labels.id }} is down"
+          description: "VM {{ $labels.name }} on {{ $labels.instance }} has been down for 2 minutes"
+
+      - alert: ProxmoxHighCPU
+        expr: pve_cpu_usage_ratio * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on Proxmox node"
+          description: "Proxmox {{ $labels.instance }} CPU is {{ $value | printf \"%.1f\" }}%"
+
+  - name: services
+    interval: 30s
+    rules:
+      # ===========================================
+      # SERVICE-SPECIFIC ALERTS
+      # ===========================================
+      - alert: PrometheusTargetMissing
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus target {{ $labels.job }} is missing"
+          description: "Target {{ $labels.instance }} in job {{ $labels.job }} is down"
+
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Loki is down"
+          description: "Loki log aggregator is not responding"
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager is down"
+          description: "Alertmanager is not responding - alerts will not be delivered"
+{% endraw %}

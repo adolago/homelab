@@ -1,5 +1,6 @@
-# Homelab Core Services Stack
-# Includes: Portainer, Watchtower, Caddy, Prometheus, Grafana
+# Homelab Core Services Stack - Managed by Ansible
+# svr-core (192.168.178.102)
+# Includes: Portainer, Watchtower, Caddy, Prometheus, Grafana, Loki, Promtail, Alertmanager
 
 networks:
   proxy:
@@ -11,6 +12,8 @@ volumes:
   portainer_data:
   prometheus_data:
   grafana_data:
+  loki_data:
+  alertmanager_data:
 
 services:
   # ===========================================
@@ -30,22 +33,24 @@ services:
       - "9000:9000"
     networks:
       - proxy
+    labels:
+      - "service=portainer"
 
   watchtower:
     image: containrrr/watchtower:latest
     container_name: watchtower
     restart: unless-stopped
     environment:
+      - DOCKER_API_VERSION=1.44
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_POLL_INTERVAL=86400
       - WATCHTOWER_INCLUDE_STOPPED=true
       - WATCHTOWER_REVIVE_STOPPED=false
-      - WATCHTOWER_NOTIFICATIONS=shoutrrr
-      # Uncomment and set for notifications:
-      # - WATCHTOWER_NOTIFICATION_URL=discord://token@channel
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/localtime:/etc/localtime:ro
+    labels:
+      - "service=watchtower"
 
   # ===========================================
   # REVERSE PROXY
@@ -66,9 +71,11 @@ services:
       - proxy
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    labels:
+      - "service=caddy"
 
   # ===========================================
-  # MONITORING
+  # MONITORING - METRICS
   # ===========================================
   prometheus:
     image: prom/prometheus:latest
@@ -77,28 +84,53 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=30d"
+      - "--storage.tsdb.retention.time={{ prometheus_retention }}"
       - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
     networks:
       - monitoring
       - proxy
+    labels:
+      - "service=prometheus"
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - "--web.external-url=http://alertmanager.home.arpa"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring
+      - proxy
+    labels:
+      - "service=alertmanager"
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-changeme}
+      - GF_SECURITY_ADMIN_USER={{ grafana_admin_user }}
+      - GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password }}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://grafana.home.arpa
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
       - "3001:3000"
     networks:
@@ -106,6 +138,9 @@ services:
       - proxy
     depends_on:
       - prometheus
+      - loki
+    labels:
+      - "service=grafana"
 
   node-exporter:
     image: prom/node-exporter:latest
@@ -122,6 +157,8 @@ services:
       - "9100:9100"
     networks:
       - monitoring
+    labels:
+      - "service=node-exporter"
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -138,6 +175,59 @@ services:
       - "8080:8080"
     networks:
       - monitoring
+    labels:
+      - "service=cadvisor"
+
+  pve-exporter:
+    image: prompve/prometheus-pve-exporter:latest
+    container_name: pve-exporter
+    restart: unless-stopped
+    environment:
+      - PVE_USER=${PVE_USER:-root@pam}
+      - PVE_TOKEN_NAME=${PVE_TOKEN_NAME:-prometheus}
+      - PVE_TOKEN_VALUE=${PVE_TOKEN_VALUE}
+      - PVE_VERIFY_SSL=false
+    ports:
+      - "9221:9221"
+    networks:
+      - monitoring
+    labels:
+      - "service=pve-exporter"
+
+  # ===========================================
+  # MONITORING - LOGS (Loki Stack)
+  # ===========================================
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - monitoring
+    labels:
+      - "service=loki"
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monitoring
+    depends_on:
+      - loki
+    labels:
+      - "service=promtail"
 
   # ===========================================
   # DNS for .home.arpa
@@ -152,10 +242,12 @@ services:
       - "5380:8080"
     environment:
       - HTTP_USER=${DNSMASQ_USER:-admin}
-      - HTTP_PASS=${DNSMASQ_PASSWORD:-changeme}
+      - HTTP_PASS=${DNSMASQ_PASSWORD}
     volumes:
       - ./dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf:ro
     cap_add:
       - NET_ADMIN
     networks:
       - proxy
+    labels:
+      - "service=dnsmasq"

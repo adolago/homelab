@@ -1,0 +1,8 @@
+# Managed by Ansible - do not edit manually
+[Time]
+NTP={% for server in ntp_servers %}{{ server }} {% endfor %}
+
+FallbackNTP=time.cloudflare.com time.google.com
+RootDistanceMaxSec=5
+PollIntervalMinSec=32
+PollIntervalMaxSec=2048

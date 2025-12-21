@@ -1,0 +1,24 @@
+# Managed by Ansible - SSH hardening
+# Placed in /etc/ssh/sshd_config.d/99-hardening.conf
+
+# Disable password authentication (key-only)
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+UsePAM yes
+
+# Disable root login
+PermitRootLogin prohibit-password
+
+# Key exchange and ciphers (modern)
+KexAlgorithms curve25519-sha256@libssh.org,curve25519-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+
+# Session settings
+ClientAliveInterval 300
+ClientAliveCountMax 2
+MaxAuthTries 3
+MaxSessions 10
+
+# Logging
+LogLevel VERBOSE

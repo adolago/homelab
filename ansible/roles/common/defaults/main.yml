@@ -1,0 +1,48 @@
+---
+# Default variables for common role
+# CUSTOMIZE: Update timezone and SSH keys for your setup
+
+timezone: "{{ lookup('env', 'TZ') | default('UTC', true) }}"
+
+ntp_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  - 2.pool.ntp.org
+  - 3.pool.ntp.org
+
+common_packages_debian:
+  - curl
+  - wget
+  - vim
+  - htop
+  - iotop
+  - tmux
+  - git
+  - jq
+  - rsync
+  - net-tools
+  - dnsutils
+  - ca-certificates
+  - gnupg
+
+common_packages_arch:
+  - curl
+  - wget
+  - vim
+  - htop
+  - iotop
+  - tmux
+  - git
+  - jq
+  - rsync
+  - net-tools
+  - bind-tools
+  - ca-certificates
+  - gnupg
+
+# CUSTOMIZE: Replace with your own SSH public keys
+# Generate with: ssh-keygen -t ed25519 -C "your-email@example.com"
+ssh_authorized_keys:
+  # Add your SSH public keys here:
+  # - "ssh-ed25519 AAAA... user@hostname"
+  []

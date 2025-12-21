@@ -1,63 +1,97 @@
 # homelab
 
-Self-hosted infrastructure running on Proxmox VE. Sharing this publicly so others can learn from (or improve upon) my setup.
+Self-hosted infrastructure running on Proxmox VE with enterprise-grade observability, automated backups, and Infrastructure as Code.
 
 ## Architecture
 
 ```
                  ┌──────────────────────────────┐
-                 │  Router (192.168.178.1)      │
+                 │  Router (ROUTER_IP)          │
                  │  DHCP, NAT, Wi-Fi            │
                  └───────────┬──────────────────┘
                              │
         ┌────────────────────┼────────────────────┐
         │                    │                    │
    ┌────┴─────┐        ┌─────┴─────┐        ┌─────┴─────┐
-   │ svr-host │        │ svr-core  │        │ svr-nas   │
-   │ Proxmox  │───────►│ Services  │◄───────│ TrueNAS   │
-   │ .88      │        │ .102      │  NFS   │ .101      │
+   │ hypervisor│       │ services  │        │ storage   │
+   │ Proxmox  │───────►│ Docker    │◄───────│ TrueNAS   │
+   │          │        │           │  NFS   │           │
    └──────────┘        └─────┬─────┘        └───────────┘
         │                    │
         │              ┌─────┴─────┐
-        └─────────────►│ svr-dmz   │◄──── Cloudflare Tunnel
+        └─────────────►│ dmz       │◄──── Cloudflare Tunnel
                        │ Public    │
                        └───────────┘
 ```
 
+## Features
+
+- **Infrastructure as Code**: Ansible playbooks for reproducible deployments
+- **Observability Stack**: Prometheus, Grafana, Loki, Alertmanager
+- **Secrets Management**: SOPS + age encryption
+- **Automated Backups**: Borg (workstations) + vzdump (VMs) to NAS
+- **Internal DNS**: `.home.arpa` domains via dnsmasq
+- **Reverse Proxy**: Caddy with automatic internal HTTPS
+
 ## Servers
 
-### svr-host (Proxmox VE)
+### Hypervisor (Proxmox VE)
 Bare-metal hypervisor running all VMs.
 
-- **Hardware**: Intel i9-14900KF, 94GB ECC DDR5, RTX 4070 Super
-- **Storage**: 2TB NVMe (OS), 2TB + 8TB NVMe passthrough to svr-nas
-- **VMs**: svr-core, svr-nas, svr-dmz
+- **Hardware**: High-performance CPU, 64GB+ RAM, GPU for passthrough
+- **Storage**: NVMe for OS, additional drives passed through to storage VM
+- **VMs**: Services (VMID 102), Storage (VMID 101), DMZ (VMID 103)
 
-### svr-core (Ubuntu 24.04)
-Core services VM with GPU passthrough.
+### Services VM (Ubuntu 24.04)
+Core services VM with optional GPU passthrough.
 
-- **Resources**: 8 cores, 32GB RAM, RTX 4070 Super
-- **Services**: vLLM, Open WebUI, Jellyfin, Immich, Prometheus, Grafana
-- **DNS**: dnsmasq for `.home.arpa` domains
-- **Proxy**: Caddy with internal HTTPS
+- **Resources**: 4-8 cores, 16-32GB RAM, optional GPU
+- **Services**: vLLM, Open WebUI, Jellyfin, Immich
+- **Monitoring**: Prometheus, Grafana, Loki, Alertmanager
+- **DNS/Proxy**: dnsmasq + Caddy
 
-### svr-nas (TrueNAS SCALE)
+### Storage VM (TrueNAS SCALE)
 ZFS storage server.
 
-- **Resources**: 8 cores, 32GB RAM
-- **Storage**: ~9TB usable (2TB + 8TB NVMe)
+- **Resources**: 4-8 cores, 16-32GB RAM (ECC recommended)
+- **Storage**: Configure ZFS pools as needed
 - **Exports**: NFS for media, backups
 
-### svr-dmz (Debian 13)
+### DMZ VM (Debian)
 Public-facing gateway in isolated network.
 
-- **Resources**: 2 cores, 2GB RAM
-- **Services**: Caddy, Plausible Analytics
+- **Resources**: 1-2 cores, 1-2GB RAM
+- **Services**: Caddy, analytics
 - **Access**: Cloudflare Tunnel only (no port forwarding)
 
 ## Quick Start
 
-### svr-core
+### Prerequisites
+
+```bash
+# Install Ansible (on control node)
+paru -S ansible sops age
+
+# Setup secrets encryption
+./scripts/setup-sops.sh
+```
+
+### Deploy with Ansible
+
+```bash
+cd ansible
+
+# Test connectivity
+ansible all -m ping
+
+# Deploy everything
+ansible-playbook playbooks/site.yml
+
+# Deploy specific role
+ansible-playbook playbooks/common.yml --tags=ntp
+```
+
+### Manual Docker Start (svr-core)
 
 ```bash
 cd svr-core
@@ -71,25 +105,16 @@ docker compose -f stack-compose.yml up -d
 docker compose up -d
 ```
 
-### svr-dmz
-
-```bash
-cd svr-dmz
-cp .env.example .env
-# Edit .env - generate PLAUSIBLE_SECRET_KEY with:
-# openssl rand -base64 64
-
-docker compose up -d
-```
-
 ## Internal DNS (.home.arpa)
 
-Set your DNS to svr-core (192.168.178.102) to use these domains:
+Set DNS to your services VM IP (e.g., `SERVICES_IP`) to use these domains:
 
 | Domain | Service |
 |--------|---------|
 | grafana.home.arpa | Grafana dashboards |
 | prometheus.home.arpa | Prometheus metrics |
+| alertmanager.home.arpa | Alert management |
+| loki.home.arpa | Log aggregation |
 | portainer.home.arpa | Docker management |
 | jellyfin.home.arpa | Media server |
 | immich.home.arpa | Photo management |
@@ -102,20 +127,70 @@ Set your DNS to svr-core (192.168.178.102) to use these domains:
 
 ```
 homelab/
+├── ansible/
+│   ├── ansible.cfg
+│   ├── inventory/hosts.yml
+│   ├── playbooks/
+│   │   ├── site.yml          # Full deployment
+│   │   └── common.yml        # Base configuration
+│   └── roles/
+│       ├── common/           # NTP, SSH, packages
+│       ├── docker/           # Docker installation
+│       └── monitoring/       # Full observability stack
+├── scripts/
+│   ├── setup-sops.sh         # Initialize secrets encryption
+│   ├── health-check.sh       # Infrastructure health check
+│   └── install-health-check-cron.sh
 ├── svr-core/
-│   ├── docker-compose.yml      # vLLM
-│   ├── stack-compose.yml       # Monitoring + management
-│   ├── caddy/Caddyfile         # Internal reverse proxy
-│   ├── dnsmasq/dnsmasq.conf    # .home.arpa DNS
-│   └── prometheus/prometheus.yml
+│   ├── docker-compose.yml    # vLLM + applications
+│   ├── stack-compose.yml     # Monitoring + management
+│   ├── caddy/Caddyfile       # Reverse proxy
+│   ├── dnsmasq/              # DNS configuration
+│   ├── prometheus/           # Metrics + alerts
+│   ├── alertmanager/         # Alert routing
+│   ├── loki/                 # Log aggregation
+│   └── promtail/             # Log collection
 ├── svr-dmz/
-│   ├── docker-compose.yml      # Analytics + monitoring
-│   ├── caddy/Caddyfile         # Public web server
-│   └── prometheus/prometheus.yml
-└── docs/                       # Additional documentation
+│   ├── docker-compose.yml
+│   └── ...
+├── svr-host/
+│   ├── vzdump-job.conf       # Backup job config
+│   └── setup-vzdump.sh       # Backup automation setup
+├── docs/
+│   └── dns-setup.md
+└── .sops.yaml                # Secrets encryption config
 ```
+
+## Monitoring
+
+### Alerts Configured
+- Host down (2m)
+- High CPU/Memory (>85%)
+- Disk space low (>85%) / critical (>95%)
+- Container unhealthy / restarting
+- ZFS pool issues
+- Service-specific (Prometheus, Loki, Alertmanager)
+
+### Health Checks
+```bash
+# Run manual health check
+./scripts/health-check.sh
+
+# Install cron job (every 6 hours)
+./scripts/install-health-check-cron.sh
+```
+
+## Backups
+
+| Source | Tool | Target | Schedule |
+|--------|------|--------|----------|
+| Workstations | Borg | storage:/mnt/pool/Backups | Daily 02:00 |
+| VMs | vzdump | storage (NFS) | Daily 03:00 |
 
 ## Related Repos
 
-- [dotfiles](https://github.com/adolago/dotfiles) - Hyprland workstation configs
-- [adolago.xyz](https://github.com/adolago/adolago.xyz) - Personal website
+- Workstation dotfiles (Hyprland configs) in separate repository
+
+## License
+
+MIT

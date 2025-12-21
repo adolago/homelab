@@ -1,0 +1,83 @@
+---
+# Docker role - ensure Docker is installed and configured
+
+- name: Install Docker dependencies (Debian)
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+  when: ansible_os_family == "Debian"
+  tags: [docker]
+
+- name: Add Docker GPG key (Debian)
+  apt_key:
+    url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+    state: present
+  when: ansible_os_family == "Debian"
+  tags: [docker]
+
+- name: Add Docker repository (Debian)
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+    state: present
+  when: ansible_os_family == "Debian"
+  tags: [docker]
+
+- name: Install Docker (Debian)
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+  tags: [docker]
+
+- name: Install Docker (Arch)
+  pacman:
+    name:
+      - docker
+      - docker-compose
+    state: present
+  when: ansible_os_family == "Archlinux"
+  tags: [docker]
+
+- name: Enable and start Docker
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+  tags: [docker]
+
+- name: Add user to docker group
+  user:
+    name: artur
+    groups: docker
+    append: yes
+  tags: [docker]
+
+- name: Create docker network for monitoring
+  docker_network:
+    name: monitoring
+    state: present
+  tags: [docker]
+
+- name: Create docker network for proxy
+  docker_network:
+    name: proxy
+    state: present
+  tags: [docker]
+
+- name: Configure Docker daemon
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: '0644'
+  notify: restart docker
+  tags: [docker]

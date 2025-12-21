@@ -1,0 +1,20 @@
+---
+# Default variables for monitoring role
+
+docker_compose_dir: /home/artur/docker
+
+# Grafana credentials (override in vault)
+grafana_admin_user: admin
+grafana_admin_password: "{{ vault_grafana_password | default('changeme') }}"
+
+# Alertmanager notification targets
+alertmanager_slack_webhook: ""
+alertmanager_email_to: ""
+alertmanager_smtp_host: ""
+
+# Loki retention
+loki_retention_period: 744h  # 31 days
+
+# Prometheus retention
+prometheus_retention: 30d
+prometheus_scrape_interval: 15s

@@ -1,0 +1,21 @@
+---
+# Master playbook - apply all configurations
+# Usage: ansible-playbook playbooks/site.yml
+
+- name: Apply common configuration to all hosts
+  hosts: all
+  roles:
+    - common
+  tags: [common]
+
+- name: Configure Docker hosts
+  hosts: docker_hosts
+  roles:
+    - docker
+  tags: [docker]
+
+- name: Configure monitoring stack
+  hosts: svr-core
+  roles:
+    - monitoring
+  tags: [monitoring]

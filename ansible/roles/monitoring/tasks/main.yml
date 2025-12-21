@@ -1,0 +1,91 @@
+---
+# Monitoring role - deploy full observability stack
+
+- name: Create monitoring directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: artur
+    group: artur
+    mode: '0755'
+  loop:
+    - "{{ docker_compose_dir }}"
+    - "{{ docker_compose_dir }}/prometheus"
+    - "{{ docker_compose_dir }}/alertmanager"
+    - "{{ docker_compose_dir }}/loki"
+    - "{{ docker_compose_dir }}/promtail"
+    - "{{ docker_compose_dir }}/grafana/provisioning/datasources"
+    - "{{ docker_compose_dir }}/grafana/provisioning/dashboards"
+  tags: [monitoring]
+
+- name: Deploy Prometheus configuration
+  template:
+    src: prometheus.yml.j2
+    dest: "{{ docker_compose_dir }}/prometheus/prometheus.yml"
+    owner: artur
+    group: artur
+    mode: '0644'
+  tags: [monitoring, prometheus]
+
+- name: Deploy Prometheus alert rules
+  template:
+    src: alert.rules.yml.j2
+    dest: "{{ docker_compose_dir }}/prometheus/alert.rules.yml"
+    owner: artur
+    group: artur
+    mode: '0644'
+  tags: [monitoring, prometheus, alerts]
+
+- name: Deploy Alertmanager configuration
+  template:
+    src: alertmanager.yml.j2
+    dest: "{{ docker_compose_dir }}/alertmanager/alertmanager.yml"
+    owner: artur
+    group: artur
+    mode: '0644'
+  tags: [monitoring, alertmanager]
+
+- name: Deploy Loki configuration
+  template:
+    src: loki-config.yml.j2
+    dest: "{{ docker_compose_dir }}/loki/loki-config.yml"
+    owner: artur
+    group: artur
+    mode: '0644'
+  tags: [monitoring, loki]
+
+- name: Deploy Promtail configuration
+  template:
+    src: promtail-config.yml.j2
+    dest: "{{ docker_compose_dir }}/promtail/promtail-config.yml"
+    owner: artur
+    group: artur
+    mode: '0644'
+  tags: [monitoring, promtail]
+
+- name: Deploy Grafana datasources
+  template:
+    src: grafana-datasources.yml.j2
+    dest: "{{ docker_compose_dir }}/grafana/provisioning/datasources/datasources.yml"
+    owner: artur
+    group: artur
+    mode: '0644'
+  tags: [monitoring, grafana]
+
+- name: Deploy monitoring stack compose file
+  template:
+    src: stack-compose.yml.j2
+    dest: "{{ docker_compose_dir }}/stack-compose.yml"
+    owner: artur
+    group: artur
+    mode: '0644'
+  tags: [monitoring]
+
+- name: Pull and start monitoring stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ docker_compose_dir }}"
+    files:
+      - stack-compose.yml
+    state: present
+    pull: always
+  tags: [monitoring]

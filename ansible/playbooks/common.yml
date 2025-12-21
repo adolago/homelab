@@ -1,0 +1,8 @@
+---
+# Apply common configuration only
+# Usage: ansible-playbook playbooks/common.yml
+
+- name: Apply common configuration to all hosts
+  hosts: all
+  roles:
+    - common
