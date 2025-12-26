@@ -7,23 +7,26 @@
 
 set -o pipefail
 
-# Configuration - Update these IPs for your network
+# Configuration - Homelab network 192.168.178.0/24
 HOSTS=(
-    "hypervisor:192.168.1.2"     # Your Proxmox host IP
-    "services:192.168.1.10"      # Your services VM IP
-    "storage:192.168.1.11"       # Your NAS IP
+    "svr-host:192.168.178.88"      # Proxmox VE hypervisor
+    "svr-core:192.168.178.102"     # Services VM (Docker)
+    "svr-nas:192.168.178.101"      # TrueNAS SCALE storage
 )
 
 SERVICES=(
-    "prometheus:http://192.168.1.10:9090/-/healthy"
-    "grafana:http://192.168.1.10:3001/api/health"
-    "jellyfin:http://192.168.1.10:8096/health"
-    "portainer:http://192.168.1.10:9000/api/status"
+    "prometheus:http://192.168.178.102:9090/-/healthy"
+    "grafana:http://192.168.178.102:3001/api/health"
+    "jellyfin:http://192.168.178.102:8096/health"
+    "portainer:http://192.168.178.102:9000/api/status"
 )
 
 DISK_WARNING_THRESHOLD=85
 DISK_CRITICAL_THRESHOLD=95
-LOG_FILE="/var/log/homelab-health.log"
+LOG_FILE="${HOME}/.local/log/homelab-health.log"
+
+# Ensure log directory exists
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
 # Colors
 RED='\033[0;31m'
@@ -187,9 +190,9 @@ main() {
     # Check services
     echo "Checking services..."
     for service_entry in "${SERVICES[@]}"; do
-        IFS=':' read -r name url <<< "$service_entry"
-        # Reconstruct URL (split removed the http:)
-        url="http:${url#http}"
+        # Split on first colon only to preserve URL
+        name="${service_entry%%:*}"
+        url="${service_entry#*:}"
         check_service "$name" "$url"
     done
     echo ""
@@ -212,12 +215,12 @@ main() {
 
     # Check Docker containers on services VM
     echo "Checking Docker containers..."
-    check_docker_containers "services" "192.168.1.10"
+    check_docker_containers "svr-core" "192.168.178.102"
     echo ""
 
     # Check ZFS on storage
     echo "Checking ZFS..."
-    check_zfs_health "storage" "192.168.1.11"
+    check_zfs_health "svr-nas" "192.168.178.101"
     echo ""
 
     # Check backups
