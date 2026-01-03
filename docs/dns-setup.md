@@ -2,75 +2,86 @@
 
 ## Overview
 
-The homelab uses dnsmasq on the services VM as the central DNS server for `.home.arpa` domains.
+Enterprise-grade DNS infrastructure using dnsmasq on the services VM as the authoritative DNS server for internal `.home.arpa` domains with comprehensive service discovery.
 
 ## Architecture
 
 ```
 Internet ─► Router (ROUTER_IP) ─► dnsmasq (SERVICES_IP)
-                    │                         │
-                    ▼                         ▼
-              DHCP for LAN            DNS for .home.arpa
-              External DNS            Forwards external to Router
+                     │                         │
+                     ▼                         ▼
+               DHCP for LAN            DNS for .home.arpa
+               External DNS            Forwards external to Router
 ```
 
-## Client Configuration
+**Traffic Flow**: External queries route through router → dnsmasq → external DNS. Internal `.home.arpa` domains resolve directly via dnsmasq.
 
-### Option 1: Per-Client DNS (Current)
-Set DNS to your services VM IP on each client manually.
+## Client Configuration Options
+
+### Option 1: Per-Client DNS Configuration (Manual)
+Set DNS server to services VM IP address on each client device individually.
 
 ### Option 2: Router DNS Forwarding (Recommended)
-Configure your router to use the services VM as DNS for `.home.arpa` domain.
+Configure router to forward `.home.arpa` domain queries to services VM DNS server.
 
-### Option 3: Full DHCP Migration (Advanced)
-Disable router DHCP, enable dnsmasq DHCP on services VM.
+### Option 3: Complete DHCP Migration (Advanced)
+Disable router DHCP service and enable dnsmasq DHCP on services VM for unified network management.
 
-## Available Domains
+## Service Discovery Domains
 
 | Domain | Service | Target |
 |--------|---------|--------|
-| proxmox.home.arpa | Proxmox VE | Hypervisor IP |
-| grafana.home.arpa | Grafana | Services VM |
-| prometheus.home.arpa | Prometheus | Services VM |
-| alertmanager.home.arpa | Alertmanager | Services VM |
-| portainer.home.arpa | Portainer | Services VM |
-| jellyfin.home.arpa | Jellyfin | Services VM |
-| immich.home.arpa | Immich | Services VM |
-| chat.home.arpa | Open WebUI | Services VM |
-| nas.home.arpa | TrueNAS | Storage VM |
-| ha.home.arpa | Home Assistant | HA device |
-| dns.home.arpa | dnsmasq Admin | Services VM |
+| proxmox.home.arpa | Proxmox VE | Hypervisor management interface |
+| grafana.home.arpa | Grafana dashboards | Services VM |
+| prometheus.home.arpa | Prometheus metrics | Services VM |
+| alertmanager.home.arpa | Alert management | Services VM |
+| portainer.home.arpa | Docker management | Services VM |
+| jellyfin.home.arpa | Media server | Services VM |
+| immich.home.arpa | Photo management | Services VM |
+| chat.home.arpa | Open WebUI (LLM) | Services VM |
+| nas.home.arpa | TrueNAS storage | Storage VM |
+| ha.home.arpa | Home Assistant | Home automation device |
+| dns.home.arpa | DNS administration | Services VM |
 
-## Testing
+## Validation and Testing
+
+Verify DNS functionality:
 
 ```bash
-# Test DNS resolution (replace with your services VM IP)
+# Test DNS resolution (replace SERVICES_IP with your services VM IP)
 dig @SERVICES_IP grafana.home.arpa
 
-# Test from any client (if DNS configured)
+# Verify service accessibility (requires DNS configuration)
 curl -I https://grafana.home.arpa
 ```
 
-## Configuration Files
+## Configuration Management
 
-- dnsmasq: `services-vm:~/docker/dnsmasq/dnsmasq.conf`
-- Caddy: `services-vm:~/docker/caddy/Caddyfile`
+Primary configuration files:
 
-## Adding New Services
+- **DNS Service**: `services-vm:~/docker/dnsmasq/dnsmasq.conf`
+- **Reverse Proxy**: `services-vm:~/docker/caddy/Caddyfile`
 
-1. Add DNS entry to `dnsmasq.conf`:
-   ```
-   address=/newservice.home.arpa/SERVICES_IP
-   ```
+## Service Integration
 
-2. Add Caddy reverse proxy:
-   ```
-   newservice.home.arpa {
-       reverse_proxy localhost:PORT
-   }
-   ```
+Add new services to your infrastructure:
 
-3. Restart containers:
-   ```bash
-   docker restart dnsmasq caddy
-   ```
+### 1. DNS Configuration
+Add DNS entries to `dnsmasq.conf`:
+```
+address=/newservice.home.arpa/SERVICES_IP
+```
+
+### 2. Reverse Proxy Setup
+Configure Caddy routing in `Caddyfile`:
+```
+newservice.home.arpa {
+    reverse_proxy localhost:PORT
+}
+```
+
+### 3. Service Activation
+Restart affected containers:
+```bash
+docker restart dnsmasq caddy
+```

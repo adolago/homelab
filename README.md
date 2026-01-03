@@ -1,104 +1,110 @@
-# homelab
+# Homelab
 
-Self-hosted infrastructure running on Proxmox VE with enterprise-grade observability, automated backups, and Infrastructure as Code.
+Enterprise-grade self-hosted infrastructure on Proxmox VE featuring comprehensive observability, automated backups, and Infrastructure as Code management.
 
 ## Architecture
 
 ```
-                 ┌──────────────────────────────┐
-                 │  Router (ROUTER_IP)          │
-                 │  DHCP, NAT, Wi-Fi            │
-                 └───────────┬──────────────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-   ┌────┴─────┐        ┌─────┴─────┐        ┌─────┴─────┐
-   │ hypervisor│       │ services  │        │ storage   │
-   │ Proxmox  │───────►│ Docker    │◄───────│ TrueNAS   │
-   │          │        │           │  NFS   │           │
-   └──────────┘        └─────┬─────┘        └───────────┘
-        │                    │
-        │              ┌─────┴─────┐
-        └─────────────►│ dmz       │◄──── Cloudflare Tunnel
-                       │ Public    │
-                       └───────────┘
+                  ┌──────────────────────────────┐
+                  │  Router (ROUTER_IP)          │
+                  │  DHCP, NAT, Wi-Fi            │
+                  └───────────┬──────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+    ┌────┴─────┐        ┌─────┴─────┐        ┌─────┴─────┐
+    │ Hypervisor│       │ Services  │        │ Storage   │
+    │ Proxmox  │───────►│ Docker    │◄───────│ TrueNAS   │
+    │          │        │           │  NFS   │           │
+    └──────────┘        └─────┬─────┘        └───────────┘
+         │                    │
+         │              ┌─────┴─────┐
+         └─────────────►│ DMZ       │◄──── Cloudflare Tunnel
+                        │ Public    │
+                        └───────────┘
 ```
 
 ## Features
 
-- **Infrastructure as Code**: Ansible playbooks for reproducible deployments
-- **Observability Stack**: Prometheus, Grafana, Loki, Alertmanager
-- **Secrets Management**: SOPS + age encryption
-- **Automated Backups**: Borg (workstations) + vzdump (VMs) to NAS
-- **Internal DNS**: `.home.arpa` domains via dnsmasq
-- **Reverse Proxy**: Caddy with automatic internal HTTPS
+- **Infrastructure as Code**: Ansible-driven reproducible deployments
+- **Comprehensive Observability**: Prometheus, Grafana, Loki, and Alertmanager stack
+- **Enterprise Security**: SOPS + age encryption for secrets management
+- **Automated Backup Strategy**: Borg (workstations) and vzdump (VMs) to NAS
+- **Internal DNS**: `.home.arpa` domain resolution via dnsmasq
+- **Secure Reverse Proxy**: Caddy with automatic HTTPS termination
 
-## Servers
+## Infrastructure Components
 
 ### Hypervisor (Proxmox VE)
-Bare-metal hypervisor running all VMs.
+Bare-metal hypervisor hosting all virtual machines.
 
-- **Hardware**: High-performance CPU, 64GB+ RAM, GPU for passthrough
+- **Hardware Requirements**: High-performance CPU, 64GB+ RAM, GPU for passthrough
 - **Storage**: NVMe for OS, additional drives passed through to storage VM
-- **VMs**: Services (VMID 102), Storage (VMID 101), DMZ (VMID 103)
+- **Virtual Machines**: Services (VMID 102), Storage (VMID 101), DMZ (VMID 103)
 
 ### Services VM (Ubuntu 24.04)
-Core services VM with optional GPU passthrough.
+Core services platform with optional GPU acceleration.
 
-- **Resources**: 4-8 cores, 16-32GB RAM, optional GPU
-- **Services**: vLLM, Open WebUI, Jellyfin, Immich
-- **Monitoring**: Prometheus, Grafana, Loki, Alertmanager
-- **DNS/Proxy**: dnsmasq + Caddy
+- **Resources**: 4-8 CPU cores, 16-32GB RAM, optional GPU passthrough
+- **Core Services**: vLLM, Open WebUI, Jellyfin, Immich
+- **Observability**: Prometheus, Grafana, Loki, Alertmanager
+- **Network Services**: dnsmasq DNS + Caddy reverse proxy
 
 ### Storage VM (TrueNAS SCALE)
-ZFS storage server.
+Enterprise-grade ZFS storage server.
 
-- **Resources**: 4-8 cores, 16-32GB RAM (ECC recommended)
-- **Storage**: Configure ZFS pools as needed
-- **Exports**: NFS for media, backups
+- **Resources**: 4-8 CPU cores, 16-32GB ECC RAM (recommended)
+- **Storage**: Configurable ZFS pools for optimal data protection
+- **Network Exports**: NFS shares for media and backup storage
 
 ### DMZ VM (Debian)
-Public-facing gateway in isolated network.
+Isolated public-facing gateway with restricted access.
 
-- **Resources**: 1-2 cores, 1-2GB RAM
-- **Services**: Caddy, analytics
-- **Access**: Cloudflare Tunnel only (no port forwarding)
+- **Resources**: 1-2 CPU cores, 1-2GB RAM
+- **Services**: Caddy reverse proxy, analytics platform
+- **Security**: Cloudflare Tunnel access only (no direct port forwarding)
 
-## Quick Start
+## Deployment
 
 ### Prerequisites
 
+Install required tools on your control node:
+
 ```bash
-# Install Ansible (on control node)
+# Install Ansible and encryption tools
 paru -S ansible sops age
 
-# Setup secrets encryption
+# Initialize secrets encryption
 ./scripts/setup-sops.sh
 ```
 
-### Deploy with Ansible
+### Infrastructure Deployment
+
+Deploy your entire infrastructure:
 
 ```bash
 cd ansible
 
-# Test connectivity
+# Verify connectivity
 ansible all -m ping
 
-# Deploy everything
+# Deploy complete infrastructure
 ansible-playbook playbooks/site.yml
 
-# Deploy specific role
+# Deploy specific components
 ansible-playbook playbooks/common.yml --tags=ntp
 ```
 
-### Manual Docker Start (svr-core)
+### Manual Service Configuration
+
+Start core services on the services VM:
 
 ```bash
 cd svr-core
 cp .env.example .env
-# Edit .env with your passwords
+# Configure passwords in .env file
 
-# Start monitoring stack
+# Launch monitoring stack
 docker compose -f stack-compose.yml up -d
 
 # Start vLLM (requires NVIDIA GPU)
@@ -107,7 +113,7 @@ docker compose up -d
 
 ## Internal DNS (.home.arpa)
 
-Set DNS to your services VM IP (e.g., `SERVICES_IP`) to use these domains:
+Configure DNS to your services VM IP address to access services via friendly domains:
 
 | Domain | Service |
 |--------|---------|
@@ -123,74 +129,79 @@ Set DNS to your services VM IP (e.g., `SERVICES_IP`) to use these domains:
 | nas.home.arpa | TrueNAS |
 | ha.home.arpa | Home Assistant |
 
-## Structure
+## Repository Structure
 
 ```
 homelab/
-├── ansible/
-│   ├── ansible.cfg
-│   ├── inventory/hosts.yml
-│   ├── playbooks/
-│   │   ├── site.yml          # Full deployment
-│   │   └── common.yml        # Base configuration
-│   └── roles/
-│       ├── common/           # NTP, SSH, packages
-│       ├── docker/           # Docker installation
-│       └── monitoring/       # Full observability stack
-├── scripts/
-│   ├── setup-sops.sh         # Initialize secrets encryption
-│   ├── health-check.sh       # Infrastructure health check
+├── ansible/                    # Infrastructure automation
+│   ├── ansible.cfg            # Ansible configuration
+│   ├── inventory/hosts.yml    # Infrastructure inventory
+│   ├── playbooks/             # Deployment playbooks
+│   │   ├── site.yml           # Complete infrastructure deployment
+│   │   └── common.yml         # Base system configuration
+│   └── roles/                 # Reusable automation roles
+│       ├── common/            # NTP, SSH, package management
+│       ├── docker/            # Docker installation and setup
+│       └── monitoring/        # Observability stack deployment
+├── scripts/                   # Utility scripts
+│   ├── setup-sops.sh          # Initialize secrets encryption
+│   ├── health-check.sh        # Infrastructure health monitoring
 │   └── install-health-check-cron.sh
-├── svr-core/
-│   ├── docker-compose.yml    # vLLM + applications
-│   ├── stack-compose.yml     # Monitoring + management
-│   ├── caddy/Caddyfile       # Reverse proxy
-│   ├── dnsmasq/              # DNS configuration
-│   ├── prometheus/           # Metrics + alerts
-│   ├── alertmanager/         # Alert routing
-│   ├── loki/                 # Log aggregation
-│   └── promtail/             # Log collection
-├── svr-dmz/
-│   ├── docker-compose.yml
+├── svr-core/                  # Core services configuration
+│   ├── docker-compose.yml     # vLLM and applications
+│   ├── stack-compose.yml      # Monitoring and management stack
+│   ├── caddy/Caddyfile        # Reverse proxy configuration
+│   ├── dnsmasq/               # DNS service configuration
+│   ├── prometheus/            # Metrics collection and alerts
+│   ├── alertmanager/          # Alert routing and management
+│   ├── loki/                  # Log aggregation service
+│   └── promtail/              # Log collection agent
+├── svr-dmz/                   # DMZ services
+│   ├── docker-compose.yml     # Public-facing services
 │   └── ...
-├── svr-host/
-│   ├── vzdump-job.conf       # Backup job config
-│   └── setup-vzdump.sh       # Backup automation setup
-├── docs/
-│   └── dns-setup.md
-└── .sops.yaml                # Secrets encryption config
+├── svr-host/                  # Hypervisor configuration
+│   ├── vzdump-job.conf        # VM backup job configuration
+│   └── setup-vzdump.sh        # Backup automation setup
+├── docs/                      # Documentation
+│   └── dns-setup.md          # DNS configuration guide
+└── .sops.yaml                 # Secrets encryption configuration
 ```
 
-## Monitoring
+## Monitoring & Alerting
 
-### Alerts Configured
-- Host down (2m)
-- High CPU/Memory (>85%)
-- Disk space low (>85%) / critical (>95%)
-- Container unhealthy / restarting
-- ZFS pool issues
-- Service-specific (Prometheus, Loki, Alertmanager)
+### Pre-configured Alerts
 
-### Health Checks
+Comprehensive monitoring covers:
+- **Host availability**: Down detection (2-minute threshold)
+- **Resource utilization**: CPU/Memory exceeding 85%
+- **Storage capacity**: Warning at 85%, critical at 95%
+- **Container health**: Unhealthy and restart detection
+- **Storage integrity**: ZFS pool issues
+- **Service-specific**: Prometheus, Loki, Alertmanager health
+
+### Health Monitoring
+
 ```bash
-# Run manual health check
+# Execute comprehensive health check
 ./scripts/health-check.sh
 
-# Install cron job (every 6 hours)
+# Install automated monitoring (every 6 hours)
 ./scripts/install-health-check-cron.sh
 ```
 
-## Backups
+## Backup Strategy
 
-| Source | Tool | Target | Schedule |
-|--------|------|--------|----------|
-| Workstations | Borg | storage:/mnt/pool/Backups | Daily 02:00 |
-| VMs | vzdump | storage (NFS) | Daily 03:00 |
+Automated multi-tier backup approach:
 
-## Related Repos
+| Source | Backup Tool | Destination | Schedule | Retention |
+|--------|-------------|-------------|----------|-----------|
+| Workstations | Borg | storage:/mnt/pool/Backups | Daily 02:00 | Configurable |
+| Virtual Machines | vzdump | storage (NFS mount) | Daily 03:00 | Multiple snapshots |
 
-- Workstation dotfiles (Hyprland configs) in separate repository
+## Related Projects
+
+- [Dotfiles](https://github.com/your-username/dotfiles) - Hyprland workstation configurations
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
