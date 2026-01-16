@@ -6,9 +6,12 @@ global:
   evaluation_interval: 15s
 
 alerting:
-  alertmanagers: []
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
 
-rule_files: []
+rule_files:
+  - './rules/*.yml'
 
 scrape_configs:
   # Prometheus self-monitoring
@@ -51,3 +54,11 @@ scrape_configs:
       - targets: ['NAS_IP:9100']  # NAS IP
         labels:
           instance: 'storage'
+
+  # DMZ VM - node exporter
+  # CUSTOMIZE: Update with your DMZ IP
+  - job_name: 'dmz'
+    static_configs:
+      - targets: ['DMZ_IP:9100']  # DMZ IP
+        labels:
+          instance: 'dmz'

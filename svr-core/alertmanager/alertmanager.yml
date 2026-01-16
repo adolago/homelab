@@ -19,16 +19,16 @@ route:
 
 receivers:
   - name: 'default'
-    # CUSTOMIZE: Add your notification endpoints
-    # Example webhook:
-    # webhook_configs:
-    #   - url: 'http://localhost:8080/alerts'
+    # CUSTOMIZE: Replace NTFY_URL with your ntfy endpoint (e.g., https://ntfy.sh/your-topic)
+    webhook_configs:
+      - url: 'NTFY_URL'
+        send_resolved: true
 
   - name: 'critical'
-    # CUSTOMIZE: Add critical alert endpoints
-    # Example Discord:
-    # discord_configs:
-    #   - webhook_url: 'DISCORD_WEBHOOK_URL'
+    # CUSTOMIZE: Replace DISCORD_WEBHOOK_URL with your Discord webhook URL
+    webhook_configs:
+      - url: 'DISCORD_WEBHOOK_URL'
+        send_resolved: true
 
 inhibit_rules:
   - source_match:

@@ -19,3 +19,9 @@
   roles:
     - monitoring
   tags: [monitoring]
+
+- name: Apply security hardening
+  hosts: servers
+  roles:
+    - security
+  tags: [security]

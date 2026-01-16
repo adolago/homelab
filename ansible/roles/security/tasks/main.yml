@@ -1,0 +1,33 @@
+---
+- name: Disable root SSH login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+    validate: 'sshd -t -f %s'
+  notify: Restart sshd
+  tags: [ssh, security]
+
+- name: Disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+    validate: 'sshd -t -f %s'
+  notify: Restart sshd
+  tags: [ssh, security]
+
+- name: Install fail2ban
+  ansible.builtin.package:
+    name: fail2ban
+    state: present
+  when: fail2ban_enabled
+  tags: [fail2ban, security]
+
+- name: Enable and start fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    enabled: true
+    state: started
+  when: fail2ban_enabled
+  tags: [fail2ban, security]
