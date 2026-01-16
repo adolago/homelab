@@ -1,7 +1,7 @@
 # Homelab Caddy Configuration
 # .home.arpa domain for internal services with HTTPS
 #
-# CUSTOMIZE: Replace example IPs in INFRASTRUCTURE PROXIES section
+# CUSTOMIZE: Replace placeholders in INFRASTRUCTURE PROXIES section
 
 {
     # Use internal CA for .home.arpa (self-signed)
@@ -68,6 +68,11 @@ vllm.home.arpa {
     reverse_proxy host.docker.internal:8000
 }
 
+# Homebridge
+homebridge.home.arpa {
+    reverse_proxy host.docker.internal:8581
+}
+
 # ===========================================
 # INFRASTRUCTURE PROXIES
 # CUSTOMIZE: Update IPs to match your network
@@ -75,12 +80,12 @@ vllm.home.arpa {
 
 # Home Assistant
 ha.home.arpa, homeassistant.home.arpa {
-    reverse_proxy 192.168.1.20:8123  # Your Home Assistant IP
+    reverse_proxy HA_IP:8123  # Home Assistant IP
 }
 
 # Proxmox
 proxmox.home.arpa, pve.home.arpa {
-    reverse_proxy https://192.168.1.2:8006 {  # Your Proxmox IP
+    reverse_proxy https://PROXMOX_IP:8006 {  # Proxmox IP
         transport http {
             tls_insecure_skip_verify
         }
@@ -89,7 +94,7 @@ proxmox.home.arpa, pve.home.arpa {
 
 # TrueNAS
 nas.home.arpa, truenas.home.arpa {
-    reverse_proxy https://192.168.1.11 {  # Your NAS IP
+    reverse_proxy https://NAS_IP {  # NAS IP
         transport http {
             tls_insecure_skip_verify
         }

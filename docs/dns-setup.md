@@ -62,6 +62,17 @@ Primary configuration files:
 - **DNS Service**: `services-vm:~/docker/dnsmasq/dnsmasq.conf`
 - **Reverse Proxy**: `services-vm:~/docker/caddy/Caddyfile`
 
+## Required Placeholders (Do Not Deploy With Dummy Values)
+
+Replace these placeholders before deploying:
+
+- `ROUTER_IP`
+- `SERVICES_IP`
+
+These appear in:
+
+- `svr-core/dnsmasq/dnsmasq.conf`
+
 ## Service Integration
 
 Add new services to your infrastructure:

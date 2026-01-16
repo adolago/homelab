@@ -26,12 +26,17 @@ Enterprise-grade self-hosted infrastructure on Proxmox VE featuring comprehensiv
 
 ## Features
 
-- **Infrastructure as Code**: Ansible-driven reproducible deployments
+- **Infrastructure as Code**: Ansible-driven reproducible deployments (or use [Rustible](https://github.com/rustible/rustible) for faster execution)
 - **Comprehensive Observability**: Prometheus, Grafana, Loki, and Alertmanager stack
 - **Enterprise Security**: SOPS + age encryption for secrets management
 - **Automated Backup Strategy**: Borg (workstations) and vzdump (VMs) to NAS
 - **Internal DNS**: `.home.arpa` domain resolution via dnsmasq
 - **Secure Reverse Proxy**: Caddy with automatic HTTPS termination
+
+## Public Exposure Policy
+
+Only `adolago.xyz` is intended to be public, routed through Cloudflare Tunnel on `svr-dmz`.
+All other services are internal-only and should not be exposed directly to the internet.
 
 ## Infrastructure Components
 
@@ -74,9 +79,33 @@ Install required tools on your control node:
 # Install Ansible and encryption tools
 paru -S ansible sops age
 
+# Or use Rustible (faster Ansible alternative)
+# https://github.com/rustible/rustible
+cargo install rustible
+
 # Initialize secrets encryption
 ./scripts/setup-sops.sh
 ```
+
+### Required Placeholders (Do Not Deploy With Dummy Values)
+
+Before deploying, replace these placeholders in the repo or provide them via variables:
+
+- `ROUTER_IP` (your router)
+- `SERVICES_IP` (svr-core)
+- `PROXMOX_IP` (svr-host)
+- `NAS_IP` (svr-nas)
+- `NAS_EXPORT_PATH` (NFS export path for backups)
+- `HA_IP` (Home Assistant)
+- `NAS_BACKUP_PATH` (workstation backup target)
+
+These appear in:
+
+- `svr-core/dnsmasq/dnsmasq.conf`
+- `svr-core/caddy/Caddyfile`
+- `svr-core/prometheus/prometheus.yml`
+- `svr-host/vzdump-job.conf`
+- `README.md`
 
 ### Infrastructure Deployment
 
@@ -85,14 +114,13 @@ Deploy your entire infrastructure:
 ```bash
 cd ansible
 
-# Verify connectivity
+# With Ansible
 ansible all -m ping
-
-# Deploy complete infrastructure
 ansible-playbook playbooks/site.yml
 
-# Deploy specific components
-ansible-playbook playbooks/common.yml --tags=ntp
+# Or with Rustible (same syntax, faster execution)
+rustible run playbooks/site.yml -i inventory/hosts.yml
+rustible run playbooks/common.yml -i inventory/hosts.yml --tags=ntp
 ```
 
 ### Manual Service Configuration
@@ -195,7 +223,7 @@ Automated multi-tier backup approach:
 
 | Source | Backup Tool | Destination | Schedule | Retention |
 |--------|-------------|-------------|----------|-----------|
-| Workstations | Borg | storage:/mnt/pool/Backups | Daily 02:00 | Configurable |
+| Workstations | Borg | NAS_BACKUP_PATH | Daily 02:00 | Configurable |
 | Virtual Machines | vzdump | storage (NFS mount) | Daily 03:00 | Multiple snapshots |
 
 ## Related Projects

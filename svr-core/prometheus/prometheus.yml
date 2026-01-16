@@ -1,5 +1,5 @@
 # Prometheus configuration for homelab
-# CUSTOMIZE: Replace example IPs with your network configuration
+# CUSTOMIZE: Replace placeholders with your network configuration
 
 global:
   scrape_interval: 15s
@@ -34,7 +34,7 @@ scrape_configs:
   # CUSTOMIZE: Update with your Proxmox host IP
   - job_name: 'proxmox'
     static_configs:
-      - targets: ['192.168.1.2']  # Your Proxmox IP
+      - targets: ['PROXMOX_IP']  # Proxmox IP
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -48,6 +48,6 @@ scrape_configs:
   # CUSTOMIZE: Update with your NAS IP
   - job_name: 'truenas'
     static_configs:
-      - targets: ['192.168.1.11:9100']  # Your NAS IP
+      - targets: ['NAS_IP:9100']  # NAS IP
         labels:
           instance: 'storage'
