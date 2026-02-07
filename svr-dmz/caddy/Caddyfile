@@ -16,6 +16,15 @@
     log {
         output file /var/log/caddy/access.log
     }
+
+    @prom_query {
+        method GET
+        path /api/prometheus/query_range
+    }
+    handle @prom_query {
+        uri replace /api/prometheus/query_range /api/v1/query_range
+        reverse_proxy localhost:9090
+    }
 }
 
 # Internal monitoring (localhost only)
